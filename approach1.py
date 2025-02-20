@@ -18,11 +18,23 @@ def get_per_unit_rates(issue_age: int) -> list[float]:
     """
     rates = [0.0 for _ in range(120)] # default vector of 0s for 120 years
     with open('unit_load.csv', newline='') as f:
-        reader = csv.DictReader(f)
+        #reader = csv.DictReader(f)
+        reader = csv.reader(f)
+        row = next(reader)
+        for i in range(len(row)):
+            if row[i] == "Rate":
+                rate_col = i
+            elif row[i] == 'Issue_Age':
+                age_col = i
+            elif row[i] == 'Policy_Year':
+                year_col = i
+
         for row in reader:
-            if row['Issue_Age'] == str(issue_age):
-                policy_year = int(row['Policy_Year'])
-                rate = float(row['Rate'])
+            if row[age_col] == str(issue_age):
+                #policy_year = int(row['Issue_Age'])
+                #rate = float(row['Rate'])
+                policy_year = int(row[age_col])
+                rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
@@ -48,11 +60,27 @@ def get_coi_rates(gender: str, risk_class: str, issue_age: int) -> list[float]:
     """
     rates = [0.0 for _ in range(120)] # default vector of 0s for 120 years
     with open('coi.csv', newline='') as f:
-        reader = csv.DictReader(f)
+        #reader = csv.DictReader(f)
+        reader = csv.reader(f)
+        row = next(reader)
+        for i in range(len(row)):
+            if row[i] == 'Gender':
+                gender_col = i
+            elif row[i] == 'Risk_Class':
+                class_col = i
+            elif row[i] == 'Issue_Age':
+                age_col = i
+            elif row[i] == 'Policy_Year':
+                year_col = i
+            elif row[i] == 'Rate':
+                rate_col = i
         for row in reader:
-            if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
-                policy_year = int(row['Policy_Year'])
-                rate = float(row['Rate'])
+            #if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
+            if row[gender_col] == gender and row[class_col] == risk_class and row[age_col] == str(issue_age):
+                #policy_year = int(row['Policy_Year'])
+                #rate = float(row['Rate'])
+                policy_year = int(row[year_col])
+                rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
@@ -74,11 +102,21 @@ def get_corridor_factors(issue_age: int) -> list[float]:
     """
     rates = [1.0 for _ in range(120)] # default vector of 0s for 120 years
     with open('corridor_factors.csv', newline='') as f:
-        reader = csv.DictReader(f)
+        #reader = csv.DictReader(f)
+        reader = csv.reader(f)
+        row = next(reader)
+        for i in range(len(row)):
+            if row[i] == 'Attained_Age':
+                age_col = i
+            elif row[i] == 'Rate':
+                rate_col = i
         for row in reader:
-            if int(row['Attained_Age']) >= issue_age:
-                policy_year = int(row['Attained_Age']) - issue_age + 1
-                rate = float(row['Rate'])
+            #if int(row['Attained_Age']) >= issue_age:
+            if int(row[age_col]) >= issue_age:
+                #policy_year = int(row['Attained_Age']) - issue_age + 1
+                #rate = float(row['Rate'])
+                policy_year = int(row[age_col]) - issue_age + 1
+                rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
@@ -160,11 +198,38 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
 
         # exit early if lapse before end
         if end_value < 0:
-            print('Warning: policy lapsed prior to maturity')
+            #print('Warning: policy lapsed prior to maturity')
             return output
 
     # if successful, exit with desired information
     return output
+
+def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> dict[str, list[int|float]]:
+    guess_lo = 0
+    guess_hi = face_amount / 100
+
+    while True:
+        illus = illustrate(gender, risk_class, issue_age, face_amount, guess_hi)
+        if illus['Value_End'][-1] <= 0:
+            guess_lo = guess_hi
+            guess_hi = guess_hi * 2
+        else:
+            break
+
+    while (guess_hi - guess_lo) > 0.005:
+        guess_md = (guess_lo + guess_hi)/2
+        illus = illustrate(gender, risk_class, issue_age, face_amount, guess_md)
+        if illus['Value_End'][-1] <= 0:
+            guess_lo = guess_md
+        else:
+            guess_hi = guess_md
+
+    result = round(guess_md, 2)
+    illus = illustrate(gender, risk_class, issue_age, face_amount, guess_md)
+    if illus['Value_End'][-1] <= 0:
+        result += 0.01
+
+    return result
 
 if __name__ == '__main__':
     result = illustrate("M", "NS", 35, 100000, 1255.03)
