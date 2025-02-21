@@ -1,6 +1,7 @@
 import abc
 import csv
 import math
+from dataclasses import dataclass
 
 ILLUSTRATION_FIELDS = ['Policy_Month',
                        'Policy_Year',
@@ -17,6 +18,7 @@ ILLUSTRATION_FIELDS = ['Policy_Month',
                        'Value_End']
 
 
+@dataclass
 class Insured:
     """
     Simple data structure for an insured to house characteristics
@@ -30,11 +32,9 @@ class Insured:
     issue_age: int
         Issue age of insured
     """
-
-    def __init__(self, gender: str, risk_class: str, issue_age: int):
-        self.gender = gender
-        self.risk_class = risk_class
-        self.issue_age = issue_age
+    gender: str
+    risk_class: str
+    issue_age: int
 
 
 class UniversalLifeProduct(abc.ABC):
