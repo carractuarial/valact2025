@@ -37,7 +37,7 @@ class Insured:
         self.issue_age = issue_age
 
 
-class Universal_Life_Product(abc.ABC):
+class UniversalLifeProduct(abc.ABC):
     """
     Abstract base class for Universal Life products
 
@@ -148,7 +148,7 @@ class Universal_Life_Product(abc.ABC):
         return result
 
 
-class Product1(Universal_Life_Product):
+class Product1(UniversalLifeProduct):
     maturity_age = 121
 
     @classmethod
@@ -332,9 +332,9 @@ class Product1(Universal_Life_Product):
         return output
 
 
-class Universal_Life_Policy:
+class UniversalLifePolicy:
 
-    def __init__(self, insured: Insured, product: Universal_Life_Product, face_amount: int):
+    def __init__(self, insured: Insured, product: UniversalLifeProduct, face_amount: int):
         self.insured = insured
         self.product = product
         self.face_amount = face_amount
@@ -353,5 +353,5 @@ class Universal_Life_Policy:
 
 if __name__ == '__main__':
     ins = Insured("M", "NS", 35)
-    pol = Universal_Life_Policy(ins, Product1, 100000)
+    pol = UniversalLifePolicy(ins, Product1, 100000)
     print(pol.at_issue_illustration(1255.03))
