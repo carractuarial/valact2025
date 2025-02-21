@@ -1,24 +1,25 @@
 import csv
 
+
 def get_per_unit_rates(issue_age: int) -> list[float]:
     """
     Function to retrieve per $1,000 of face amount rates from a CSV
     that varies by issue age and policy year
-    
+
     Parameters
     ----------
     issue_age: int
         The issue age to retrieve
-        
+
     Returns
     -------
     list[float]
         List of rates where index 0 is for policy year 1; default entry for
         each index is 0
     """
-    rates = [0.0 for _ in range(120)] # default vector of 0s for 120 years
+    rates = [0.0 for _ in range(120)]  # default vector of 0s for 120 years
     with open('unit_load.csv', newline='') as f:
-        #reader = csv.DictReader(f)
+        # reader = csv.DictReader(f)
         reader = csv.reader(f)
         row = next(reader)
         for i in range(len(row)):
@@ -31,18 +32,19 @@ def get_per_unit_rates(issue_age: int) -> list[float]:
 
         for row in reader:
             if row[age_col] == str(issue_age):
-                #policy_year = int(row['Issue_Age'])
-                #rate = float(row['Rate'])
+                # policy_year = int(row['Issue_Age'])
+                # rate = float(row['Rate'])
                 policy_year = int(row[age_col])
                 rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
+
 def get_coi_rates(gender: str, risk_class: str, issue_age: int) -> list[float]:
     """
     Function to retrieve per $1,000 COI rates from a CSV that varies by 
     gender, risk class, issue age, and policy year
-    
+
     Parameters
     ----------
     gender: str
@@ -51,16 +53,16 @@ def get_coi_rates(gender: str, risk_class: str, issue_age: int) -> list[float]:
         Risk class of insured, NS or SM expected
     issue_age: int
         Issue age of insured
-        
+
     Returns
     -------
     list[float]
         List of rates where index 0 is for policy year 1; default entry for
         each index is 0
     """
-    rates = [0.0 for _ in range(120)] # default vector of 0s for 120 years
+    rates = [0.0 for _ in range(120)]  # default vector of 0s for 120 years
     with open('coi.csv', newline='') as f:
-        #reader = csv.DictReader(f)
+        # reader = csv.DictReader(f)
         reader = csv.reader(f)
         row = next(reader)
         for i in range(len(row)):
@@ -75,34 +77,35 @@ def get_coi_rates(gender: str, risk_class: str, issue_age: int) -> list[float]:
             elif row[i] == 'Rate':
                 rate_col = i
         for row in reader:
-            #if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
+            # if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
             if row[gender_col] == gender and row[class_col] == risk_class and row[age_col] == str(issue_age):
-                #policy_year = int(row['Policy_Year'])
-                #rate = float(row['Rate'])
+                # policy_year = int(row['Policy_Year'])
+                # rate = float(row['Rate'])
                 policy_year = int(row[year_col])
                 rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
+
 def get_corridor_factors(issue_age: int) -> list[float]:
     """
     Function to retrieve corridor factors from a CSV that varies by attained
     age
-    
+
     Parameters
     ----------
     issue_age: int
         Issue age of insured
-        
+
     Returns
     -------
     list[float]
         List of factors by policy year, index 0 is for policy year 1; default values
         of 1 are used if rates not found
     """
-    rates = [1.0 for _ in range(120)] # default vector of 0s for 120 years
+    rates = [1.0 for _ in range(120)]  # default vector of 0s for 120 years
     with open('corridor_factors.csv', newline='') as f:
-        #reader = csv.DictReader(f)
+        # reader = csv.DictReader(f)
         reader = csv.reader(f)
         row = next(reader)
         for i in range(len(row)):
@@ -111,19 +114,20 @@ def get_corridor_factors(issue_age: int) -> list[float]:
             elif row[i] == 'Rate':
                 rate_col = i
         for row in reader:
-            #if int(row['Attained_Age']) >= issue_age:
+            # if int(row['Attained_Age']) >= issue_age:
             if int(row[age_col]) >= issue_age:
-                #policy_year = int(row['Attained_Age']) - issue_age + 1
-                #rate = float(row['Rate'])
+                # policy_year = int(row['Attained_Age']) - issue_age + 1
+                # rate = float(row['Rate'])
                 policy_year = int(row[age_col]) - issue_age + 1
                 rate = float(row[rate_col])
                 rates[policy_year - 1] = rate
     return rates
 
-def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, annual_premium: float) -> dict[str,list[int|float]]:
+
+def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
     """
     Generate an at issue illustration for given case
-    
+
     Parameters
     ----------
     gender: str
@@ -157,7 +161,8 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
               'COI_Charge',
               'Interest',
               'Value_End']
-    output = {field: [0 for _ in range(12*projection_years)] for field in fields}
+    output = {field: [0 for _ in range(12*projection_years)]
+              for field in fields}
 
     prem_load_rate = 0.06
     policy_fee_rate = 120
@@ -174,7 +179,8 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
         start_value = end_value
         premium = annual_premium if (i % 12 == 0) else 0
         premium_load = prem_load_rate * premium
-        expense_charge = (policy_fee_rate + per_unit_rates[policy_year-1] * face_amount / 1000) / 12
+        expense_charge = (
+            policy_fee_rate + per_unit_rates[policy_year-1] * face_amount / 1000) / 12
         av_for_db = start_value + premium - premium_load - expense_charge
         db = max(face_amount, corridor_factors[policy_year-1] * av_for_db)
         naar = max(0, db * naar_discount - max(0, av_for_db))
@@ -198,18 +204,20 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
 
         # exit early if lapse before end
         if end_value < 0:
-            #print('Warning: policy lapsed prior to maturity')
+            # print('Warning: policy lapsed prior to maturity')
             return output
 
     # if successful, exit with desired information
     return output
 
-def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> dict[str, list[int|float]]:
+
+def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
     guess_lo = 0
     guess_hi = face_amount / 100
 
     while True:
-        illus = illustrate(gender, risk_class, issue_age, face_amount, guess_hi)
+        illus = illustrate(gender, risk_class, issue_age,
+                           face_amount, guess_hi)
         if illus['Value_End'][-1] <= 0:
             guess_lo = guess_hi
             guess_hi = guess_hi * 2
@@ -218,7 +226,8 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
 
     while (guess_hi - guess_lo) > 0.005:
         guess_md = (guess_lo + guess_hi)/2
-        illus = illustrate(gender, risk_class, issue_age, face_amount, guess_md)
+        illus = illustrate(gender, risk_class, issue_age,
+                           face_amount, guess_md)
         if illus['Value_End'][-1] <= 0:
             guess_lo = guess_md
         else:
@@ -230,6 +239,7 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
         result += 0.01
 
     return result
+
 
 if __name__ == '__main__':
     result = illustrate("M", "NS", 35, 100000, 1255.03)
