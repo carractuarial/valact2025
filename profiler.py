@@ -24,7 +24,7 @@ if __name__ == '__main__':
     print('\nILLUSTRATIONS-----------------------------')
     code = 'ins = approach2.Insured("M", "NS", 35)\n'
     code += 'prod = approach2.Product1\n'
-    code += 'pol = approach2.Universal_Life_Policy(ins, prod, 100000)\n'
+    code += 'pol = approach2.UniversalLifePolicy(ins, prod, 100000)\n'
     code += 'pol.at_issue_illustration(1255.03)'
     t = timeit.Timer(code, setup='import approach2')
     print(f"{n} calls:", t.timeit(number=n))
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     print('\nSOLVES------------------------------------')
     code = 'ins = approach2.Insured("M", "NS", 35)\n'
     code += 'prod = approach2.Product1\n'
-    code += 'pol = approach2.Universal_Life_Policy(ins, prod, 100000)\n'
+    code += 'pol = approach2.UniversalLifePolicy(ins, prod, 100000)\n'
     code += 'pol.solve_minimum_premium_to_maturity()'
     t = timeit.Timer(code, setup='import approach2')
     print(f"{n} calls:", t.timeit(number=n))
