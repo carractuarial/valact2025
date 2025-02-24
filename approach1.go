@@ -13,7 +13,7 @@ import (
 
 func create_array(value float64) [120]float64 {
 	var array [120]float64
-	for i := 0; i < len(array); i++ {
+	for i := range len(array) {
 		array[i] = value
 	}
 	return array
@@ -36,26 +36,25 @@ func get_per_unit_rates(issue_age int) [120]float64 {
 
 	defer file.Close()
 	reader := csv.NewReader(file)
-	row, err := reader.Read()
+	row, _ := reader.Read()
 
-	for i := 0; i < len(row); i++ {
-		switch row[i] {
+	for idx, val := range row {
+		switch val {
 		case "Issue_Age":
-			age_col = i
+			age_col = idx
 		case "Policy_Year":
-			year_col = i
+			year_col = idx
 		case "Rate":
-			rate_col = i
+			rate_col = idx
 		}
 	}
 
 	for {
 		row, err := reader.Read()
-		//fmt.Println(row)
 		if err == io.EOF {
 			break
 		}
-		file_age, err = strconv.Atoi(row[age_col])
+		file_age, _ = strconv.Atoi(row[age_col])
 		if file_age == issue_age {
 			file_rate, _ = strconv.ParseFloat(row[rate_col], 64)
 			file_year, _ = strconv.Atoi(row[year_col])
@@ -84,28 +83,27 @@ func get_coi_rates(gender string, risk_class string, issue_age int) [120]float64
 	reader := csv.NewReader(file)
 	row, _ := reader.Read()
 
-	for i := 0; i < len(row); i++ {
-		switch row[i] {
+	for idx, val := range row {
+		switch val {
 		case "Issue_Age":
-			age_col = i
+			age_col = idx
 		case "Policy_Year":
-			year_col = i
+			year_col = idx
 		case "Rate":
-			rate_col = i
+			rate_col = idx
 		case "Gender":
-			gender_col = i
+			gender_col = idx
 		case "Risk_Class":
-			class_col = i
+			class_col = idx
 		}
 	}
 
 	for {
 		row, err := reader.Read()
-		//fmt.Println(row)
 		if err == io.EOF {
 			break
 		}
-		file_age, err = strconv.Atoi(row[age_col])
+		file_age, _ = strconv.Atoi(row[age_col])
 		if file_age == issue_age && row[gender_col] == gender && row[class_col] == risk_class {
 			file_rate, _ = strconv.ParseFloat(row[rate_col], 64)
 			file_year, _ = strconv.Atoi(row[year_col])
@@ -127,12 +125,12 @@ func get_corridor_factors(issue_age int) [120]float64 {
 	defer file.Close()
 	reader := csv.NewReader(file)
 	row, _ := reader.Read()
-	for i := 0; i < len(row); i++ {
-		switch row[i] {
+	for idx, val := range row {
+		switch val {
 		case "Attained_Age":
-			age_col = i
+			age_col = idx
 		case "Rate":
-			rate_col = i
+			rate_col = idx
 		}
 	}
 
@@ -153,7 +151,6 @@ func get_corridor_factors(issue_age int) [120]float64 {
 }
 
 func illustrate(gender string, risk_class string, issue_age int, face_amount float64, annual_premium float64) float64 {
-
 	maturity_age := 121
 	projection_years := maturity_age - issue_age
 
@@ -164,9 +161,6 @@ func illustrate(gender string, risk_class string, issue_age int, face_amount flo
 	policy_fees := create_array(120)
 	naar_discount := create_array(math.Pow(1.01, -1/12.0))
 	interest_rate := create_array(math.Pow(1.03, 1/12.0) - 1)
-
-	//fmt.Println(naar_discount)
-	//fmt.Println(interest_rate)
 
 	end_value := 0.0
 	policy_year := 0
@@ -198,19 +192,6 @@ func main() {
 	gender := "M"
 	risk_class := "NS"
 
-	//var unit_rates [120]float64
-	//var coi_rates [120]float64
-	//var cf_rates [120]float64
-
-	//unit_rates = get_per_unit_rates(issue_age)
-	//coi_rates = get_coi_rates(gender, risk_class, issue_age)
-	//cf_rates = get_corridor_factors(issue_age)
-
-	//fmt.Println("Unit rates", unit_rates)
-	//fmt.Println("COI rates", coi_rates)
-	//fmt.Println("Corridor factors", cf_rates)
-
-	//fmt.Println(illustrate(gender, risk_class, issue_age, 100000, 1255.03))
 	fmt.Println("Starting...")
 	start := time.Now()
 	iter := 1000
