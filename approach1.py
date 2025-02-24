@@ -1,4 +1,4 @@
-import csv
+import polars as pl
 
 
 def get_per_unit_rates(issue_age: int) -> list[float]:
@@ -17,26 +17,11 @@ def get_per_unit_rates(issue_age: int) -> list[float]:
         List of rates where index 0 is for policy year 1; default entry for
         each index is 0
     """
-    rates = [0.0 for _ in range(120)]  # default vector of 0s for 120 years
-    with open('unit_load.csv', newline='') as f:
-        # reader = csv.DictReader(f)
-        reader = csv.reader(f)
-        row = next(reader)
-        for i in range(len(row)):
-            if row[i] == "Rate":
-                rate_col = i
-            elif row[i] == 'Issue_Age':
-                age_col = i
-            elif row[i] == 'Policy_Year':
-                year_col = i
-
-        for row in reader:
-            if row[age_col] == str(issue_age):
-                # policy_year = int(row['Issue_Age'])
-                # rate = float(row['Rate'])
-                policy_year = int(row[age_col])
-                rate = float(row[rate_col])
-                rates[policy_year - 1] = rate
+    rates = [0.0 for _ in range(120)]           # create default array
+    df = pl.scan_csv('unit_load.csv').filter(
+        pl.col('Issue_Age') == issue_age).collect()  # load filtered csv
+    for i in range(len(df)):
+        rates[df['Policy_Year'][i]-1] = df['Rate'][i]  # update array
     return rates
 
 
@@ -60,30 +45,11 @@ def get_coi_rates(gender: str, risk_class: str, issue_age: int) -> list[float]:
         List of rates where index 0 is for policy year 1; default entry for
         each index is 0
     """
-    rates = [0.0 for _ in range(120)]  # default vector of 0s for 120 years
-    with open('coi.csv', newline='') as f:
-        # reader = csv.DictReader(f)
-        reader = csv.reader(f)
-        row = next(reader)
-        for i in range(len(row)):
-            if row[i] == 'Gender':
-                gender_col = i
-            elif row[i] == 'Risk_Class':
-                class_col = i
-            elif row[i] == 'Issue_Age':
-                age_col = i
-            elif row[i] == 'Policy_Year':
-                year_col = i
-            elif row[i] == 'Rate':
-                rate_col = i
-        for row in reader:
-            # if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
-            if row[gender_col] == gender and row[class_col] == risk_class and row[age_col] == str(issue_age):
-                # policy_year = int(row['Policy_Year'])
-                # rate = float(row['Rate'])
-                policy_year = int(row[year_col])
-                rate = float(row[rate_col])
-                rates[policy_year - 1] = rate
+    rates = [0.0 for _ in range(120)]
+    df = pl.scan_csv('coi.csv').filter(pl.col('Issue_Age') == issue_age, pl.col(
+        'Gender') == gender, pl.col('Risk_Class') == risk_class).collect()
+    for i in range(len(df)):
+        rates[df['Policy_Year'][i]-1] = df['Rate'][i]
     return rates
 
 
@@ -103,24 +69,11 @@ def get_corridor_factors(issue_age: int) -> list[float]:
         List of factors by policy year, index 0 is for policy year 1; default values
         of 1 are used if rates not found
     """
-    rates = [1.0 for _ in range(120)]  # default vector of 0s for 120 years
-    with open('corridor_factors.csv', newline='') as f:
-        # reader = csv.DictReader(f)
-        reader = csv.reader(f)
-        row = next(reader)
-        for i in range(len(row)):
-            if row[i] == 'Attained_Age':
-                age_col = i
-            elif row[i] == 'Rate':
-                rate_col = i
-        for row in reader:
-            # if int(row['Attained_Age']) >= issue_age:
-            if int(row[age_col]) >= issue_age:
-                # policy_year = int(row['Attained_Age']) - issue_age + 1
-                # rate = float(row['Rate'])
-                policy_year = int(row[age_col]) - issue_age + 1
-                rate = float(row[rate_col])
-                rates[policy_year - 1] = rate
+    rates = [1.0 for _ in range(120)]
+    df = pl.scan_csv('corridor_factors.csv').filter(
+        pl.col('Attained_Age') >= issue_age).collect()
+    for i in range(len(df)):
+        rates[df['Attained_Age'][i]-issue_age] = df['Rate'][i]
     return rates
 
 

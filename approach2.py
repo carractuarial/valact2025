@@ -1,7 +1,8 @@
 import abc
-import csv
-import math
 from dataclasses import dataclass
+import math
+
+import polars as pl
 
 ILLUSTRATION_FIELDS = ['Policy_Month',
                        'Policy_Year',
@@ -169,26 +170,11 @@ class Product1(UniversalLifeProduct):
             each index is 0
         """
         rates = [0.0 for _ in range(
-            cls.maturity_age - issue_age)]  # default vector of 0s for 120 years
-        with open('unit_load.csv', newline='') as f:
-            # reader = csv.DictReader(f)
-            reader = csv.reader(f)
-            row = next(reader)
-            for i in range(len(row)):
-                if row[i] == 'Issue_Age':
-                    age_col = i
-                elif row[i] == 'Policy_Year':
-                    year_col = i
-                elif row[i] == 'Rate':
-                    rate_col = i
-            for row in reader:
-                # if row['Issue_Age'] == str(issue_age):
-                if row[age_col] == str(issue_age):
-                    # policy_year = int(row['Policy_Year'])
-                    # rate = float(row['Rate'])
-                    policy_year = int(row[year_col])
-                    rate = float(row[rate_col])
-                    rates[policy_year - 1] = rate
+            cls.maturity_age - issue_age)]  # create default array
+        df = pl.scan_csv('unit_load.csv').filter(
+            pl.col('Issue_Age') == issue_age).collect()  # load filtered csv
+        for i in range(len(df)):
+            rates[df['Policy_Year'][i]-1] = df['Rate'][i]  # update array
         return rates
 
     @classmethod
@@ -213,30 +199,11 @@ class Product1(UniversalLifeProduct):
             each index is 0
         """
         rates = [0.0 for _ in range(
-            cls.maturity_age - issue_age)]  # default vector of 0s for 120 years
-        with open('coi.csv', newline='') as f:
-            # reader = csv.DictReader(f)
-            reader = csv.reader(f)
-            row = next(reader)
-            for i in range(len(row)):
-                if row[i] == 'Gender':
-                    gender_col = i
-                elif row[i] == 'Risk_Class':
-                    class_col = i
-                elif row[i] == 'Issue_Age':
-                    age_col = i
-                elif row[i] == 'Policy_Year':
-                    year_col = i
-                elif row[i] == 'Rate':
-                    rate_col = i
-            for row in reader:
-                # if row['Gender'] == gender and row['Risk_Class'] == risk_class and row['Issue_Age'] == str(issue_age):
-                if row[gender_col] == gender and row[class_col] == risk_class and row[age_col] == str(issue_age):
-                    # policy_year = int(row['Policy_Year'])
-                    # rate = float(row['Rate'])
-                    policy_year = int(row[year_col])
-                    rate = float(row[rate_col])
-                    rates[policy_year - 1] = rate
+            cls.maturity_age - issue_age)]
+        df = pl.scan_csv('coi.csv').filter(pl.col('Gender') == gender, pl.col(
+            'Risk_Class') == risk_class, pl.col('Issue_Age') == issue_age).collect()
+        for i in range(len(df)):
+            rates[df['Policy_Year'][i]-1] = df['Rate'][i]
         return rates
 
     @classmethod
@@ -255,28 +222,13 @@ class Product1(UniversalLifeProduct):
             List of factors by policy year, index 0 is for policy year 1; default values
             of 1 are used if rates not found
         """
+        years = cls.maturity_age - issue_age
         rates = [1.0 for _ in range(
-            cls.maturity_age - issue_age)]  # default vector of 0s for 120 years
-        with open('corridor_factors.csv', newline='') as f:
-            # reader = csv.DictReader(f)
-            reader = csv.reader(f)
-            row = next(reader)
-            for i in range(len(row)):
-                if row[i] == 'Attained_Age':
-                    age_col = i
-                elif row[i] == 'Rate':
-                    rate_col = i
-            for row in reader:
-                # if int(row['Attained_Age']) >= issue_age:
-                if int(row[age_col]) >= issue_age:
-                    # policy_year = int(row['Attained_Age']) - issue_age + 1
-                    # rate = float(row['Rate'])
-                    policy_year = int(row[age_col]) - issue_age + 1
-                    rate = float(row[rate_col])
-                    try:
-                        rates[policy_year - 1] = rate
-                    except IndexError:
-                        pass
+            years)]
+        df = pl.scan_csv('corridor_factors.csv').filter(
+            pl.col('Attained_Age') >= issue_age).collect()
+        for i in range(min(years, len(df))):
+            rates[df['Attained_Age'][i]-issue_age] = df['Rate'][i]
         return rates
 
     @classmethod
