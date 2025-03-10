@@ -77,9 +77,9 @@ def get_corridor_factors(issue_age: int) -> list[float]:
     return rates
 
 
-def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
+def get_rates(gender: str, risk_class: str, issue_age: int) -> dict[str, list[float]]:
     """
-    Generate an at issue illustration for given case
+    Create a dictionary of rates for illustrations
 
     Parameters
     ----------
@@ -87,6 +87,35 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
         Gender of insured for policy illustration, expected M or F
     risk_class: str
         Risk class of insured for policy illustration, expects NS or SM
+    issue_age: int
+        Issue age of insured for policy illustration
+
+    Returns
+    -------
+    dict[str, list[float]]
+        A dictionary where keys are strings and values are lists of corresponding rates
+        by policy year
+    """
+    length = 120
+    rates = {}
+    rates['premium_load'] = [0.06 for _ in range(length)]
+    rates['policy_fee'] = [120 for _ in range(length)]
+    rates['per_unit'] = get_per_unit_rates(issue_age)
+    rates['corridor_factor'] = get_corridor_factors(issue_age)
+    rates['naar_disc'] = [1.01**(-1/12) for _ in range(length)]
+    rates['coi'] = get_coi_rates(gender, risk_class, issue_age)
+    rates['interest'] = [1.03**(1/12) - 1 for _ in range(length)]
+    return rates
+
+
+def illustrate(rates: dict[str, list[float]], issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
+    """
+    Generate an at issue illustration for given case
+
+    Parameters
+    ----------
+    rates: dict[str, list[float]]
+        rates for illustration
     issue_age: int
         Issue age of insured for policy illustration
     face_amount: int
@@ -117,29 +146,23 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
     output = {field: [0 for _ in range(12*projection_years)]
               for field in fields}
 
-    prem_load_rate = 0.06
-    policy_fee_rate = 120
-    per_unit_rates = get_per_unit_rates(issue_age)
-    corridor_factors = get_corridor_factors(issue_age)
-    naar_discount = 1.01**(-1/12)
-    coi_rates = get_coi_rates(gender, risk_class, issue_age)
-    interest_rate = (1.03**(1/12) - 1)
-
     end_value = 0
     policy_year = 0
     for i in range(12*projection_years):
         policy_year += 1 if (i % 12 == 0) else 0
         start_value = end_value
         premium = annual_premium if (i % 12 == 0) else 0
-        premium_load = prem_load_rate * premium
+        premium_load = rates['premium_load'][policy_year-1] * premium
         expense_charge = (
-            policy_fee_rate + per_unit_rates[policy_year-1] * face_amount / 1000) / 12
+            rates['policy_fee'][policy_year-1] + rates['per_unit'][policy_year-1] * face_amount / 1000) / 12
         av_for_db = start_value + premium - premium_load - expense_charge
-        db = max(face_amount, corridor_factors[policy_year-1] * av_for_db)
-        naar = max(0, db * naar_discount - max(0, av_for_db))
-        coi = (naar / 1000) * (coi_rates[policy_year-1] / 12)
+        db = max(face_amount, rates['corridor_factor']
+                 [policy_year-1] * av_for_db)
+        naar = max(0, db * rates['naar_disc']
+                   [policy_year-1] - max(0, av_for_db))
+        coi = (naar / 1000) * (rates['coi'][policy_year-1] / 12)
         av_for_interest = av_for_db - coi
-        interest = max(0, av_for_interest) * interest_rate
+        interest = max(0, av_for_interest) * rates['interest'][policy_year-1]
         end_value = av_for_interest + interest
 
         output['Policy_Month'][i] = i+1
@@ -167,9 +190,10 @@ def illustrate(gender: str, risk_class: str, issue_age: int, face_amount: int, a
 def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
     guess_lo = 0
     guess_hi = face_amount / 100
+    rates = get_rates(gender, risk_class, issue_age)
 
     while True:
-        illus = illustrate(gender, risk_class, issue_age,
+        illus = illustrate(rates, issue_age,
                            face_amount, guess_hi)
         if illus['Value_End'][-1] <= 0:
             guess_lo = guess_hi
@@ -179,7 +203,7 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
 
     while (guess_hi - guess_lo) > 0.005:
         guess_md = (guess_lo + guess_hi)/2
-        illus = illustrate(gender, risk_class, issue_age,
+        illus = illustrate(rates, issue_age,
                            face_amount, guess_md)
         if illus['Value_End'][-1] <= 0:
             guess_lo = guess_md
@@ -187,7 +211,7 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
             guess_hi = guess_md
 
     result = round(guess_md, 2)
-    illus = illustrate(gender, risk_class, issue_age, face_amount, guess_md)
+    illus = illustrate(rates, issue_age, face_amount, guess_md)
     if illus['Value_End'][-1] <= 0:
         result += 0.01
 
@@ -195,5 +219,6 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
 
 
 if __name__ == '__main__':
-    result = illustrate("M", "NS", 35, 100000, 1255.03)
+    rates = get_rates("M", "NS", 35)
+    result = illustrate(rates, 35, 100000, 1255.03)
     print(result)

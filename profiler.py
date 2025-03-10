@@ -12,7 +12,7 @@ def test(header, code, setup, n):
 
     many = t.repeat(number=n)
     print(f"\n{n} calls\n5 repeats:", many, "\nAvg:", sum(many)/len(many))
-    # cProfile.run(code, sort='tottime')
+    cProfile.run(code, sort='tottime')
 
 
 if __name__ == '__main__':
@@ -21,12 +21,12 @@ if __name__ == '__main__':
     header2 = "SOLVES------------------------------------"
     print('\n------------RUNNING APPROACH 1------------')
 
-    code = "approach1.illustrate('M','NS',35,100000,1255.03)"
+    code = "rates = approach1.get_rates('M', 'NS', 35)\napproach1.illustrate(rates,35,100000,1255.03)"
     setup = "import approach1"
-    # test(header1, code, setup, n)
+    test(header1, code, setup, n)
 
     code = "approach1.solve_for_premium('M','NS',35,100000)"
-    # test(header2, code, setup, n)
+    test(header2, code, setup, n)
 
     print('\n------------RUNNING APPROACH 2------------')
     setup = "import approach2"
