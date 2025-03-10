@@ -167,7 +167,7 @@ def illustrate(rates: dict[str, list[float]], issue_age: int, face_amount: int, 
 
         output['Policy_Month'][i] = i+1
         output['Policy_Year'][i] = policy_year
-        output['Month_In_Policy_Year'][i] = ((i-1) % 12) + 1
+        output['Month_In_Policy_Year'][i] = (i % 12) + 1
         output['Value_Start'][i] = start_value
         output['Premium'][i] = premium
         output['Premium_Load'][i] = premium_load
@@ -180,7 +180,6 @@ def illustrate(rates: dict[str, list[float]], issue_age: int, face_amount: int, 
 
         # exit early if lapse before end
         if end_value < 0:
-            # print('Warning: policy lapsed prior to maturity')
             return output
 
     # if successful, exit with desired information

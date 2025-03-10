@@ -4,28 +4,14 @@ import math
 
 import polars as pl
 
-ILLUSTRATION_FIELDS = ['Policy_Month',
-                       'Policy_Year',
-                       'Month_In_Policy_Year',
-                       'Value_Start',
-                       'Premium',
-                       'Premium_Load',
-                       'Expense_Charge',
-                       'Value_For_DB',
-                       'Death_Benefit',
-                       'NAAR',
-                       'COI_Charge',
-                       'Interest',
-                       'Value_End']
-
 
 @dataclass
 class Insured:
     """
     Simple data structure for an insured to house characteristics
 
-    Parameters
-    ----------
+    Parameters/Attributes
+    ---------------------
     gender: str
         Gender of insured
     risk_class: str
@@ -38,17 +24,158 @@ class Insured:
     issue_age: int
 
 
+class Rates:
+    """
+    Container for illustration rates
+
+    Can access each rate by policy year
+    """
+
+    def __init__(self,
+                 premium_loads: list[float],
+                 policy_fees: list[float],
+                 per_units: list[float],
+                 corridor_factors: list[float],
+                 naar_discs: list[float],
+                 cois: list[float],
+                 interest_rates: list[float]):
+        self._premium_loads = premium_loads
+        self._policy_fees = policy_fees
+        self._per_units = per_units
+        self._corridor_factors = corridor_factors
+        self._naar_discs = naar_discs
+        self._cois = cois
+        self._interest_rates = interest_rates
+
+    def premium_load(self, policy_year: int) -> float:
+        """
+        Retrieve premium load by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            Premium load
+        """
+        return self._premium_loads[policy_year - 1]
+
+    def policy_fee(self, policy_year: int) -> float:
+        """
+        Retrieve policy fee by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            Policy fee
+        """
+        return self._policy_fees[policy_year - 1]
+
+    def per_unit(self, policy_year: int) -> float:
+        """
+        Retrieve per unit load by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            Per unit load
+        """
+        return self._per_units[policy_year - 1]
+
+    def corridor_factor(self, policy_year: int) -> float:
+        """
+        Retrieve corridor factor by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            Corridor factor
+        """
+        return self._corridor_factors[policy_year - 1]
+
+    def naar_disc(self, policy_year: int) -> float:
+        """
+        Retrieve NAAR discount factor by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            NAAR discount factor
+        """
+        return self._naar_discs[policy_year - 1]
+
+    def coi(self, policy_year: int) -> float:
+        """
+        Retrieve COI rate by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            COI rate
+        """
+        return self._cois[policy_year - 1]
+
+    def interest_rate(self, policy_year: int) -> float:
+        """
+        Retrieve interest rate by policy year
+
+        Parameters
+        ----------
+        policy_year: int
+            Policy year to retrieve rate for
+
+        Returns
+        -------
+        float
+            Interest rate
+        """
+        return self._interest_rates[policy_year - 1]
+
+
 class UniversalLifeProduct(abc.ABC):
     """
     Abstract base class for Universal Life products
 
     Must be subclassed and methods overwritten
+
+    Attributes
+    ----------
+    maturity_age: int
+        (class attribute) maturity age of product
     """
     maturity_age = 121
 
     @staticmethod
     @abc.abstractmethod
-    def product_rates_for_policy(insured: Insured) -> dict[str, list[float]]:
+    def product_rates_for_policy(insured: Insured) -> Rates:
         """
         Class method to retrieve product rates for particular insured
         Must be overriden by subclass
@@ -60,65 +187,39 @@ class UniversalLifeProduct(abc.ABC):
 
         Returns
         -------
-        dict[str, list[float]]
-            Dictionary where keys are product rate types and values are list of rates by policy year
+        Rates
+            Illustration rates for given Insured's characteristics
         """
         pass
 
     @classmethod
-    def _new_illustration(cls, issue_age: int) -> dict[str, list[int | float]]:
-        return {field: [0 for _ in range(12*(cls.maturity_age - issue_age))] for field in ILLUSTRATION_FIELDS}
-
-    @staticmethod
-    def _update_illustration(full: dict[str, list[int | float]], updates: dict[str, int | float], policy_month: int) -> None:
-        for key in updates.keys():
-            full[key][policy_month-1] = updates[key]
-
-    @staticmethod
     @abc.abstractmethod
-    def _monthly_processing(policy_month: int, start_value: float, face_amount: int, annual_premium: float, rates: dict[str, list[float]]) -> dict[str, float | int]:
+    def at_issue_illustration(cls, rates: Rates, issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
         """
-        Method to execute monthly processing and return necessary information for updates to illustration
+        Method to generate at issue illustration based on provided parameters
 
-        Must be overriden by subclass to contain appropriate processing order
+        Must be overriden by subclasses
 
         Parameters
         ----------
-        policy_month: int
-            policy month to process
-        start_value: float
-            value at start of policy month
+        rates: Rates
+            Rates to use in illustration
+        issue_age: int
+            Issue age for use in illustration
         face_amount: int
-            face amount for processing
+            Face amount for illustration
         annual_premium: float
-            annual premium used for processing
-        rates: dict[str, list[float]]
-            Dictionary of applicable rates
+            Premium to be paid annually in illustration
 
         Returns
         -------
-        dict[str, int | float]
-            Dictionary whose keys align with full illustration and values are singule integers or floats
+        dict[str, list[int | float]]
+            Illustration as a dictionary
         """
         pass
 
     @classmethod
-    def at_issue_illustration(cls, rates: dict[str, list[float]], issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
-        illustration = cls._new_illustration(issue_age)
-        end_value = 0
-        for policy_month in range(1, 12*(cls.maturity_age - issue_age)+1):
-            monthly_roll = cls._monthly_processing(
-                policy_month, end_value, face_amount, annual_premium, rates)
-            end_value = monthly_roll['Value_End']
-            cls._update_illustration(illustration, monthly_roll, policy_month)
-
-            if end_value < 0:
-                # print('WARNING: Policy lapses before maturity')
-                return illustration
-        return illustration
-
-    @classmethod
-    def solve_minimum_premium_to_maturity(cls, rates: dict[str, list[float]], issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
+    def solve_minimum_premium_to_maturity(cls, rates: Rates, issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
         guess_lo = 0
         guess_hi = face_amount / 100
 
@@ -234,53 +335,82 @@ class Product1(UniversalLifeProduct):
     @classmethod
     def product_rates_for_policy(cls, insured: Insured) -> dict[str, list[float]]:
         years = cls.maturity_age - insured.issue_age
-        rates = {}
-        rates['premium_loads'] = [0.06 for _ in range(years)]
-        rates['policy_fees'] = [120 for _ in range(years)]
-        rates['unit_loads'] = cls._get_per_unit_rates(insured.issue_age)
-
-        rates['naar_discount_rates'] = [1.01**(-1/12) for _ in range(years)]
-        rates['coi_rates'] = cls._get_coi_rates(
-            insured.gender, insured.risk_class, insured.issue_age)
-        rates['interest_rates'] = [1.03**(1/12)-1 for _ in range(years)]
-        rates['corridor_factors'] = cls._get_corridor_factors(
+        premium_loads = [0.06 for _ in range(years)]
+        policy_fees = [120 for _ in range(years)]
+        unit_loads = cls._get_per_unit_rates(insured.issue_age)
+        corridor_factors = cls._get_corridor_factors(
             insured.issue_age)
+        naar_discs = [1.01**(-1/12) for _ in range(years)]
+        cois = cls._get_coi_rates(
+            insured.gender, insured.risk_class, insured.issue_age)
+        interest_rates = [1.03**(1/12)-1 for _ in range(years)]
+
+        rates = Rates(premium_loads,
+                      policy_fees,
+                      unit_loads,
+                      corridor_factors,
+                      naar_discs,
+                      cois,
+                      interest_rates)
 
         return rates
 
-    @staticmethod
-    def _monthly_processing(policy_month, start_value, face_amount, annual_premium, rates):
-        # calculate
-        policy_year = math.ceil(policy_month/12)
-        premium = annual_premium if (policy_month % 12 == 1) else 0
-        premium_load = premium * rates['premium_loads'][policy_year-1]
-        expense_charge = (rates['policy_fees'][policy_year-1] +
-                          rates['unit_loads'][policy_year-1] * face_amount / 1000) / 12
-        av_for_db = start_value + premium - premium_load - expense_charge
-        db = max(face_amount, av_for_db *
-                 rates['corridor_factors'][policy_year-1])
-        naar = max(0, db * rates['naar_discount_rates']
-                   [policy_year-1] - max(0, av_for_db))
-        coi = (naar / 1000) * (rates['coi_rates'][policy_year-1] / 12)
-        av_for_interest = av_for_db - coi
-        interest = max(0, av_for_interest) * \
-            rates['interest_rates'][policy_year-1]
-        end_value = av_for_interest + interest
+    @classmethod
+    def at_issue_illustration(cls, rates: Rates, issue_age: int, face_amount: int, annual_premium: float) -> dict[str, list[int | float]]:
+        projection_years = cls.maturity_age - issue_age
+        fields = ['Policy_Month',
+                  'Policy_Year',
+                  'Month_In_Policy_Year',
+                  'Value_Start',
+                  'Premium',
+                  'Premium_Load',
+                  'Expense_Charge',
+                  'Value_For_DB',
+                  'Death_Benefit',
+                  'NAAR',
+                  'COI_Charge',
+                  'Interest',
+                  'Value_End']
+        output = {field: [0 for _ in range(
+            12*projection_years)] for field in fields}
+        end_value = 0
+        policy_year = 0
+        for i in range(12*projection_years):
+            policy_year += 1 if (i % 12 == 0) else 0
+            start_value = end_value
+            premium = annual_premium if (i % 12 == 0) else 0
+            premium_load = premium * rates.premium_load(policy_year)
+            expense_charge = (rates.policy_fee(policy_year) +
+                              rates.per_unit(policy_year) * face_amount / 1000) / 12
+            av_for_db = start_value + premium - premium_load - expense_charge
+            db = max(face_amount, av_for_db *
+                     rates.corridor_factor(policy_year))
+            naar = max(0, db * rates.naar_disc(policy_year) -
+                       max(0, av_for_db))
+            coi = (naar / 1000) * (rates.coi(policy_year) / 12)
+            av_for_interest = av_for_db - coi
+            interest = max(0, av_for_interest) * \
+                rates.interest_rate(policy_year)
+            end_value = av_for_interest + interest
 
-        # prepare output
-        output = {'Policy_Month': policy_month,
-                  'Policy_Year': policy_year,
-                  'Month_In_Policy_Year': (policy_month - 1) % 12 + 1,
-                  'Value_Start': start_value,
-                  'Premium': premium,
-                  'Premium_Load': premium_load,
-                  'Expense_Charge': expense_charge,
-                  'Value_For_DB': av_for_db,
-                  'Death_Benefit': db,
-                  'NAAR': naar,
-                  'COI_Charge': coi,
-                  'Interest': interest,
-                  'Value_End': end_value}
+            # update illustration values
+            output['Policy_Month'][i] = i+1
+            output['Policy_Year'][i] = policy_year
+            output['Month_In_Policy_Year'][i] = (i % 12) + 1
+            output['Value_Start'][i] = start_value
+            output['Premium'][i] = premium
+            output['Premium_Load'][i] = premium_load
+            output['Expense_Charge'][i] = expense_charge
+            output['Value_For_DB'][i] = av_for_db
+            output['Death_Benefit'][i] = db
+            output['NAAR'][i] = naar
+            output['COI_Charge'][i] = coi
+            output['Interest'][i] = interest
+            output['Value_End'][i] = end_value
+
+            if end_value < 0:
+                # print('WARNING: Policy lapses before maturity')
+                return output
         return output
 
 
