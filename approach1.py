@@ -186,7 +186,26 @@ def illustrate(rates: dict[str, list[float]], issue_age: int, face_amount: int, 
     return output
 
 
-def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
+def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> tuple[float, dict]:
+    """
+    Determine annual level premium to minimally fund policy to maturity
+
+    Parameters
+    ----------
+    gender: str
+        Gender for insured/case
+    risk_class: str
+        Risk class for insured/case
+    issue_age: int
+        Issue age for insured/case
+    face_amount: int
+        Face amount for policy/case
+
+    Returns
+    -------
+    tuple[float, dict]
+        Tuple whose first item is the solved for premium and second item is the resulting illustration
+    """
     guess_lo = 0
     guess_hi = face_amount / 100
     rates = get_rates(gender, risk_class, issue_age)
@@ -213,11 +232,17 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
     illus = illustrate(rates, issue_age, face_amount, guess_md)
     if illus['Value_End'][-1] <= 0:
         result += 0.01
+        illus = illustrate(rates, issue_age, face_amount, result)
 
     return result
 
 
 if __name__ == '__main__':
-    rates = get_rates("M", "NS", 35)
-    result = illustrate(rates, 35, 100000, 1255.03)
+    gender = "M"
+    risk_class = "NS"
+    issue_age = 35
+    face_amount = 100000
+    premium = 1255.03
+    rates = get_rates(gender, risk_class, issue_age)
+    result = illustrate(rates, issue_age, face_amount, premium)
     print(result)
