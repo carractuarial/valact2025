@@ -234,7 +234,7 @@ def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount:
         result += 0.01
         illus = illustrate(rates, issue_age, face_amount, result)
 
-    return result
+    return (result, illus)
 
 
 if __name__ == '__main__':
