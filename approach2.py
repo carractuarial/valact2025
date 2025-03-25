@@ -219,7 +219,7 @@ class UniversalLifeProduct(abc.ABC):
         pass
 
     @classmethod
-    def solve_minimum_premium_to_maturity(cls, rates: Rates, issue_age: int, face_amount: int) -> dict[str, list[int | float]]:
+    def solve_minimum_premium_to_maturity(cls, rates: Rates, issue_age: int, face_amount: int) -> tuple[float, dict]:
         guess_lo = 0
         guess_hi = face_amount / 100
 
@@ -246,8 +246,10 @@ class UniversalLifeProduct(abc.ABC):
             rates, issue_age, face_amount, guess_md)
         if illustration['Value_End'][-1] <= 0:
             result += 0.01
+            illustration = cls.at_issue_illustration(
+                rates, issue_age, face_amount, result)
 
-        return result
+        return (result, illustration)
 
 
 class Product1(UniversalLifeProduct):
