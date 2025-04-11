@@ -1,39 +1,94 @@
-from shiny import App, ui, reactive, render
-import pandas as pd
+from shiny import App, ui, reactive, render, req
+import polars as pl
+import polars.selectors as cs
+from plotnine import (
+    ggplot, geom_line, aes, scale_color_brewer, theme_xkcd
+)
+import great_tables as gt
+import great_tables.shiny as gts
 from approach1 import get_rates, solve_for_premium, illustrate
 
 # Define the UI
-app_ui = ui.page_sidebar(
-    ui.sidebar(
+app_ui = ui.page_navbar(
+
+    ui.nav_panel(
+        "Table",
+        ui.card(
+            gts.output_gt("illustration_table")
+        )
+    ),
+
+    ui.nav_panel(
+        "Plot",
+        ui.input_selectize(
+            'plot_y', 'y Values',
+            choices=['Premium', 'Premium_Load', 'Expense_Charge',
+                     'Death_Benefit', 'NAAR', 'COI_Charge', 'Interest',
+                     'Value_End'],
+            selected='Value_End',
+            remove_button=True,
+            multiple=True),
+        ui.card(
+            ui.output_plot("illustration_plot",
+                           height="700px")
+        )
+    ),
+
+    title='Univeral Life Illustration App',
+    theme=ui.Theme('lumen'),
+
+    sidebar=ui.sidebar(
         ui.input_numeric("issue_age",
-                         "Issue Age", 
+                         "Issue Age",
                          value=35,
                          min=0,
                          max=120),
-        ui.input_numeric("face_amount", 
-                         "Face Amount", 
-                         value=100000, 
-                         min=0, 
+        ui.input_numeric("face_amount",
+                         "Face Amount",
+                         value=100000,
+                         min=0,
                          step=1000),
-        ui.input_numeric("annual_premium", 
-                         "Annual Premium", 
-                         value=1255.03, 
+        ui.input_numeric("annual_premium",
+                         "Annual Premium",
+                         value=1255.03,
                          min=0),
-        ui.input_action_button("solve_premium", 
+        ui.input_action_button("solve_premium",
                                "Solve for Premium"),
-        ui.input_action_button("generate_illustration", 
+        ui.input_action_button("generate_illustration",
                                "Generate Illustration"),
-    ),
-    ui.card(
-        ui.output_table("illustration_table")
+        ui.input_slider('decimals', 'Show_decimals',
+                        min=0, max=4, value=0),
+        ui.input_radio_buttons(
+            'freq',
+            'Output frequency',
+            ['Monthly', 'Annual'])
     )
+
 )
 
 # Define the server logic
+
+
 def server(input, output, session):
+
+    illustration_full = reactive.value(pl.DataFrame({}))
     
-    illustration_df = reactive.value(pd.DataFrame({}))
-    
+    # illustration that responds to the monthly vs. annual switch
+    @reactive.Calc
+    def illustration_df():
+        req(illustration_full().shape[0] > 0)
+        illustration_full()
+        if (input.freq() == "Annual"):
+            dat = (illustration_full().
+                   group_by('Policy_Year').
+                   agg(pl.col('Value_End').last()).
+                   sort('Policy_Year')
+            )
+        else:
+            dat = illustration_full()
+        
+        return dat
+
     @reactive.Effect
     @reactive.event(input.solve_premium)
     def _():
@@ -42,7 +97,7 @@ def server(input, output, session):
         # Solve for premium (assuming gender and risk_class are fixed for simplicity)
         prem_solve = solve_for_premium("M", "NS", issue_age, face_amount)
         ui.update_numeric("annual_premium", value=prem_solve[0])
-        illustration_df.set(pd.DataFrame(prem_solve[1]))
+        illustration_full.set(pl.DataFrame(prem_solve[1], strict=False))
 
     @reactive.Effect
     @reactive.event(input.generate_illustration)
@@ -52,14 +107,51 @@ def server(input, output, session):
         annual_premium = input.annual_premium()
         # Get rates and generate illustration
         rates = get_rates("M", "NS", issue_age)
-        illustration = illustrate(rates, issue_age, face_amount, annual_premium)
+        illustration = illustrate(
+            rates, issue_age, face_amount, annual_premium)
         # Convert the illustration dictionary to a DataFrame for display
-        illustration_df.set(pd.DataFrame(illustration))
-        
+        illustration_full.set(pl.DataFrame(illustration, strict=False))
+
     @output
-    @render.table
+    @gts.render_gt()
     def illustration_table():
-        return illustration_df()
+        req(illustration_df().shape[0] > 0)
+        dat = illustration_df()
+        tab = (gt.GT(dat).
+               fmt_number(list(set(dat.columns).
+                               difference(['Policy_Month', 'Policy_Year'])),
+                          decimals=input.decimals())
+               )
+        return tab
+
+    @output
+    @render.plot()
+    def illustration_plot():
+        req(illustration_df().shape[0] > 0)
+        req(len(input.plot_y()) > 0)
+        
+        if input.freq() == "Annual":
+            x = "Policy_Year"
+        else:
+            x = "Policy_Month"
+
+        dat = illustration_df()
+        if len(input.plot_y()) > 1:
+            dat = dat.melt(id_vars=x,
+                           value_vars=input.plot_y(),
+                           value_name='Value',
+                           variable_name='Series')
+            mapping = aes(x, 'Value', color='Series')
+            colorful = True
+        else:
+            mapping = aes(x, input.plot_y()[0])
+            colorful = False
+
+        p = ggplot(dat, mapping) + geom_line()
+        if colorful:
+            p = p + scale_color_brewer(type='qualitative', palette='Set1')
+        return p + theme_xkcd()
+
 
 # Create the app
 app = App(app_ui, server)
