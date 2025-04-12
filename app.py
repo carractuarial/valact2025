@@ -2,7 +2,8 @@ from shiny import App, ui, reactive, render, req
 import polars as pl
 import polars.selectors as cs
 from plotnine import (
-    ggplot, geom_line, aes, scale_color_brewer, theme_xkcd
+    ggplot, geom_line, aes, scale_color_brewer, theme_light,
+    scale_y_continuous
 )
 import great_tables as gt
 import great_tables.shiny as gts
@@ -72,21 +73,33 @@ app_ui = ui.page_navbar(
 def server(input, output, session):
 
     illustration_full = reactive.value(pl.DataFrame({}))
-    
+
     # illustration that responds to the monthly vs. annual switch
     @reactive.Calc
     def illustration_df():
         req(illustration_full().shape[0] > 0)
+
+        colnames = illustration_full().columns
+
         illustration_full()
         if (input.freq() == "Annual"):
             dat = (illustration_full().
                    group_by('Policy_Year').
-                   agg(pl.col('Value_End').last()).
+                   agg(pl.col('Value_Start').first(),
+                       pl.col(['Value_End', 'Death_Benefit', 'NAAR']).last(),
+                       pl.col(['Premium', 'Premium_Load', 'Expense_Charge',
+                               'COI_Charge', 'Interest']).sum()
+                       ).
                    sort('Policy_Year')
-            )
+                   )
+
+            # re-order columns
+            colnames = [x for x in colnames if x in dat.columns]
+            dat = dat.select(colnames)
+
         else:
             dat = illustration_full()
-        
+
         return dat
 
     @reactive.Effect
@@ -129,7 +142,7 @@ def server(input, output, session):
     def illustration_plot():
         req(illustration_df().shape[0] > 0)
         req(len(input.plot_y()) > 0)
-        
+
         if input.freq() == "Annual":
             x = "Policy_Year"
         else:
@@ -147,10 +160,14 @@ def server(input, output, session):
             mapping = aes(x, input.plot_y()[0])
             colorful = False
 
-        p = ggplot(dat, mapping) + geom_line()
+        p = (ggplot(dat, mapping) +
+             geom_line() +
+             scale_y_continuous(labels=lambda x: [f'{v:,}' for v in x]) +
+             theme_light()
+             )
         if colorful:
             p = p + scale_color_brewer(type='qualitative', palette='Set1')
-        return p + theme_xkcd()
+        return p
 
 
 # Create the app
