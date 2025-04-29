@@ -1,6 +1,5 @@
 import abc
 from dataclasses import dataclass
-import math
 
 import polars as pl
 
@@ -436,6 +435,11 @@ class UniversalLifePolicy:
 
 
 if __name__ == '__main__':
-    ins = Insured("M", "NS", 35)
-    pol = UniversalLifePolicy(ins, Product1, 100000)
-    print(pol.at_issue_illustration(1255.03))
+    gender = "M"
+    risk_class = "NS"
+    issue_age = 35
+    face_amount = 100000
+    premium = 1255.03
+    ins = Insured(gender, risk_class, issue_age)
+    pol = UniversalLifePolicy(ins, Product1, face_amount)
+    print(pol.at_issue_illustration(premium))
