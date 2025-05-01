@@ -1,3 +1,8 @@
+"""
+This script is a demonstration of a parallel processing implementation
+that leverages the code from approach1.py
+"""
+
 import multiprocessing as mp
 
 import approach1 as a1
@@ -27,17 +32,32 @@ def worker(input: mp.Queue, output: mp.Queue):
         output.put(result)
 
 
-def multi_i(num_tasks: int, num_processes: int):
+def multi_illustrate(num_tasks: int, num_processes: int):
+    """
+    Convenience wrapper to perform multiprocessing of illustrate routine
+    """
     _multi(num_tasks, num_processes, illustrate)
 
 
-def multi_s(num_tasks: int, num_processes: int):
+def multi_solve(num_tasks: int, num_processes: int):
+    """
+    Convenience wrapper to perform multiprocessing of solve routine
+    """
     _multi(num_tasks, num_processes, solve)
 
 
 def _multi(num_tasks: int, num_processes: int, function):
     """
     Main multiprocessing execution
+
+    Parameters
+    ----------
+    num_tasks: int
+        Number of tasks to generate and execute
+    num_processes: int
+        Number of parallel processes to run
+    function: function
+        Actuarial process to run in parallel, "illustrate" or "solve" are valid
     """
     mp.freeze_support()
     tasks = [(function, ('M', 'NS', 35, 100000, 1255.03))
@@ -74,4 +94,4 @@ if __name__ == '__main__':
     """Example execution"""
     t = 1000
     p = 4
-    multi_i(t, p)
+    multi_illustrate(t, p)
