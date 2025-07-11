@@ -186,7 +186,10 @@ def illustrate(rates: dict[str, list[float]], issue_age: int, face_amount: int, 
     return output
 
 
-def solve_for_premium(gender: str, risk_class: str, issue_age: int, face_amount: int) -> tuple[float, dict]:
+def solve_for_premium(gender: str,
+                      risk_class: str,
+                      issue_age: int,
+                      face_amount: int) -> tuple[float, dict]:
     """
     Determine annual level premium to minimally fund policy to maturity
 
@@ -246,3 +249,6 @@ if __name__ == '__main__':
     rates = get_rates(gender, risk_class, issue_age)
     result = illustrate(rates, issue_age, face_amount, premium)
     print(result)
+    # gmp, gmf = solve_for_premium(gender, risk_class, issue_age, face_amount)
+    # print(gmp)
+    # print(gmf)
