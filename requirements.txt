@@ -56,7 +56,6 @@ pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-multipart==0.0.20
 pytz==2025.2
-pywin32==310
 pyzmq==26.4.0
 questionary==2.1.0
 scipy==1.15.2
